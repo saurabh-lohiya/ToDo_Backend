@@ -4,7 +4,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-export const userRouter = express.Router();
+const userRouter = express.Router();
 const prisma = new PrismaClient();
 const saltRounds = 10;
 const SECRET_KEY = String(process.env.SECRET_KEY);
@@ -13,9 +13,7 @@ const generateToken = (userId: number) => {
 	return jwt.sign({ userId }, SECRET_KEY, { expiresIn: "6h" });
 };
 
-userRouter.use("/users");
-
-userRouter.post("/", async (req, res) => {
+userRouter.post("/", async function (req, res) {
 	try {
 		console.log("hi");
 		const { email, password }: any = req.body;
@@ -23,13 +21,28 @@ userRouter.post("/", async (req, res) => {
 			if (err) {
 				res.status(500).json({ message: "Error Creating User" });
 			}
-			await prisma.user.create({
+			const userDetails = await prisma.user.create({
 				data: {
 					email,
 					password: hash,
 				},
 			});
-			res.redirect("/home");
+			const token = generateToken(userDetails.id);
+
+			// Save the session in the database
+			const sessionDetails = await prisma.session.create({
+				data: {
+					userId: userDetails.id,
+					token,
+				},
+			});
+			res.status(201).json({
+				message: "User Created Successfully",
+				data: {
+					userId: sessionDetails.userId,
+					token: sessionDetails.token,
+				},
+			});
 		});
 	} catch (error) {
 		console.error(error);
@@ -37,7 +50,7 @@ userRouter.post("/", async (req, res) => {
 	}
 });
 
-userRouter.get("/:userId", authMiddleware, async (req, res) => {
+userRouter.get("/:userId", authMiddleware, async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 
@@ -56,10 +69,10 @@ userRouter.get("/:userId", authMiddleware, async (req, res) => {
 	}
 });
 
-userRouter.get("/:userId/tasks", authMiddleware, async (req, res) => {
+userRouter.get("/:userId/tasks", authMiddleware, async function (req, res) {
 	try {
 		const tasks = await prisma.task.findMany({
-			where: { userId: req.params.userId },
+			where: { userId: parseInt(req.params.userId) },
 		});
 		res.json(tasks);
 	} catch (error) {
@@ -69,7 +82,7 @@ userRouter.get("/:userId/tasks", authMiddleware, async (req, res) => {
 });
 
 // Update Password
-userRouter.put("/:userId", authMiddleware, async (req, res) => {
+userRouter.put("/:userId", authMiddleware, async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 		const { email, oldPassword, newPassword }: any = req.body;
@@ -97,7 +110,7 @@ userRouter.put("/:userId", authMiddleware, async (req, res) => {
 	}
 });
 
-userRouter.delete("/:userId", authMiddleware, async (req, res) => {
+userRouter.delete("/:userId", authMiddleware, async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 
@@ -112,7 +125,7 @@ userRouter.delete("/:userId", authMiddleware, async (req, res) => {
 	}
 });
 
-userRouter.post("/login", async (req, res) => {
+userRouter.post("/login", async function (req, res) {
 	try {
 		const { email, password }: any = req.body;
 
@@ -141,12 +154,13 @@ userRouter.post("/login", async (req, res) => {
 	}
 });
 
-userRouter.post("/:userId/logout", authMiddleware, async (req: any, res) => {
+userRouter.post("/:userId/logout", authMiddleware, async function (req, res) {
 	try {
 		const token = req.headers?.authorization;
 
 		// Delete session from the database
 		await prisma.session.deleteMany({
+			// @ts-ignore
 			where: { userId: req.user.id, token },
 		});
 		res.redirect("/");
@@ -155,3 +169,5 @@ userRouter.post("/:userId/logout", authMiddleware, async (req: any, res) => {
 		res.status(401).json({ error: "Invalid or expired token" });
 	}
 });
+
+export default userRouter;

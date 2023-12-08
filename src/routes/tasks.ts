@@ -1,12 +1,10 @@
 import express from "express";
-import { authMiddleware } from "..";
 import { PrismaClient } from "@prisma/client";
 
-export const taskRouter = express.Router();
+const taskRouter = express.Router();
 const prisma = new PrismaClient();
-taskRouter.use("/tasks", authMiddleware);
 
-taskRouter.post("/", async (req, res) => {
+taskRouter.post("/", async function (req, res) {
 	try {
 		const { title, description, status, start_date, end_date, subtasks }: any =
 			req.body;
@@ -35,9 +33,9 @@ taskRouter.post("/", async (req, res) => {
 });
 
 // Read a specific task by ID
-taskRouter.get("/:taskId", async (req, res) => {
-	const taskId = parseInt(req.params?.taskId, 10);
+taskRouter.get("/:taskId", async function (req, res) {
 	try {
+		const taskId = parseInt(req.params?.taskId, 10);
 		const task = await prisma.task.findUnique({
 			where: { id: taskId },
 		});
@@ -53,11 +51,11 @@ taskRouter.get("/:taskId", async (req, res) => {
 });
 
 // Update a task by ID
-taskRouter.put("/:taskId", authMiddleware, async (req, res) => {
-	const taskId = parseInt(req.params?.taskId, 10);
-	const { title, description, status, start_date, end_date, subtasks }: any =
-		req.body;
+taskRouter.put("/:taskId", async function (req, res) {
 	try {
+		const taskId = parseInt(req.params?.taskId, 10);
+		const { title, description, status, start_date, end_date, subtasks }: any =
+			req.body;
 		const updatedTask = await prisma.task.update({
 			where: { id: taskId },
 			data: {
@@ -77,9 +75,9 @@ taskRouter.put("/:taskId", authMiddleware, async (req, res) => {
 });
 
 // Delete a task by ID
-taskRouter.delete("/:taskId", authMiddleware, async (req, res) => {
-	const taskId = parseInt(req.params?.taskId, 10);
+taskRouter.delete("/:taskId", async function (req, res) {
 	try {
+		const taskId = parseInt(req.params?.taskId, 10);
 		await prisma.task.delete({
 			where: { id: taskId },
 		});
@@ -89,3 +87,5 @@ taskRouter.delete("/:taskId", authMiddleware, async (req, res) => {
 		res.status(500).json({ error: "Error deleting task" });
 	}
 });
+
+export default taskRouter;
