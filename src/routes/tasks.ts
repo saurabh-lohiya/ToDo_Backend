@@ -6,23 +6,22 @@ const prisma = new PrismaClient();
 
 taskRouter.post("/", async function (req, res) {
 	try {
-		const { title, description, status, start_date, end_date, subtasks }: any =
+		const { title, description, status, start_date, end_date, tasks }: any =
 			req.body;
 		console.log(req);
 		// @ts-ignore
 		if (!req.user) {
 			return res.json({ message: "Failed Authentication" });
 		}
-		const newTask = await prisma.task.create({
+		const newTask = await prisma.todoList.create({
 			data: {
 				title,
 				description,
 				status,
 				start_date,
 				end_date,
-				// @ts-ignore
-				userId: req.user.id,
-				subtasks,
+				userId: (req as any).user.id,
+				tasks: [],
 			},
 		});
 		res.json(newTask);
@@ -36,7 +35,7 @@ taskRouter.post("/", async function (req, res) {
 taskRouter.get("/:taskId", async function (req, res) {
 	try {
 		const taskId = parseInt(req.params?.taskId, 10);
-		const task = await prisma.task.findUnique({
+		const task = await prisma.todoList.findUnique({
 			where: { id: taskId },
 		});
 		if (task) {
@@ -54,9 +53,9 @@ taskRouter.get("/:taskId", async function (req, res) {
 taskRouter.put("/:taskId", async function (req, res) {
 	try {
 		const taskId = parseInt(req.params?.taskId, 10);
-		const { title, description, status, start_date, end_date, subtasks }: any =
+		const { title, description, status, start_date, end_date, tasks }: any =
 			req.body;
-		const updatedTask = await prisma.task.update({
+		const updatedTask = await prisma.todoList.update({
 			where: { id: taskId },
 			data: {
 				title,
@@ -64,7 +63,7 @@ taskRouter.put("/:taskId", async function (req, res) {
 				status,
 				start_date,
 				end_date,
-				subtasks,
+				tasks: [],
 			},
 		});
 		res.json(updatedTask);
@@ -78,7 +77,7 @@ taskRouter.put("/:taskId", async function (req, res) {
 taskRouter.delete("/:taskId", async function (req, res) {
 	try {
 		const taskId = parseInt(req.params?.taskId, 10);
-		await prisma.task.delete({
+		await prisma.todoList.delete({
 			where: { id: taskId },
 		});
 		res.json({ message: "Task deleted successfully" });

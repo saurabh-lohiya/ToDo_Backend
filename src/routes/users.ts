@@ -2,55 +2,12 @@ import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "..";
 import express from "express";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
+const saltRounds = 10;
 const userRouter = express.Router();
 const prisma = new PrismaClient();
-const saltRounds = 10;
-const SECRET_KEY = String(process.env.SECRET_KEY);
 
-const generateToken = (userId: number) => {
-	return jwt.sign({ userId }, SECRET_KEY, { expiresIn: "6h" });
-};
-
-userRouter.post("/", async function (req, res) {
-	try {
-		console.log("hi");
-		const { email, password }: any = req.body;
-		bcrypt.hash(password, saltRounds, async (err, hash) => {
-			if (err) {
-				res.status(500).json({ message: "Error Creating User" });
-			}
-			const userDetails = await prisma.user.create({
-				data: {
-					email,
-					password: hash,
-				},
-			});
-			const token = generateToken(userDetails.id);
-
-			// Save the session in the database
-			const sessionDetails = await prisma.session.create({
-				data: {
-					userId: userDetails.id,
-					token,
-				},
-			});
-			res.status(201).json({
-				message: "User Created Successfully",
-				data: {
-					userId: sessionDetails.userId,
-					token: sessionDetails.token,
-				},
-			});
-		});
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
-});
-
-userRouter.get("/:userId", authMiddleware, async function (req, res) {
+userRouter.get("/:userId", async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 
@@ -69,9 +26,9 @@ userRouter.get("/:userId", authMiddleware, async function (req, res) {
 	}
 });
 
-userRouter.get("/:userId/tasks", authMiddleware, async function (req, res) {
+userRouter.get("/:userId/tasks", async function (req, res) {
 	try {
-		const tasks = await prisma.task.findMany({
+		const tasks = await prisma.todoList.findMany({
 			where: { userId: parseInt(req.params.userId) },
 		});
 		res.json(tasks);
@@ -82,7 +39,7 @@ userRouter.get("/:userId/tasks", authMiddleware, async function (req, res) {
 });
 
 // Update Password
-userRouter.put("/:userId", authMiddleware, async function (req, res) {
+userRouter.put("/:userId", async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 		const { email, oldPassword, newPassword }: any = req.body;
@@ -110,7 +67,7 @@ userRouter.put("/:userId", authMiddleware, async function (req, res) {
 	}
 });
 
-userRouter.delete("/:userId", authMiddleware, async function (req, res) {
+userRouter.delete("/:userId", async function (req, res) {
 	try {
 		const userId = parseInt(req.params?.userId, 10);
 
@@ -125,36 +82,7 @@ userRouter.delete("/:userId", authMiddleware, async function (req, res) {
 	}
 });
 
-userRouter.post("/login", async function (req, res) {
-	try {
-		const { email, password }: any = req.body;
-
-		const user = await prisma.user.findUnique({
-			where: { email },
-		});
-
-		if (!user || !bcrypt.compare(password, user.password)) {
-			res.status(401).json({ error: "Invalid credentials" });
-		} else {
-			// Generate a JWT token with user ID
-			const token = generateToken(user.id);
-
-			// Save the session in the database
-			await prisma.session.create({
-				data: {
-					userId: user.id,
-					token,
-				},
-			});
-			res.json({ message: "Login successful", token });
-		}
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
-});
-
-userRouter.post("/:userId/logout", authMiddleware, async function (req, res) {
+userRouter.post("/:userId/logout", async function (req, res) {
 	try {
 		const token = req.headers?.authorization;
 

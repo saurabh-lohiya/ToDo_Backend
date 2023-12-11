@@ -11,24 +11,25 @@ datasource db {
 }
 
 model User {
-  id       Int      @id @default(autoincrement())
-  email    String   @unique
-  password String
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
   first_name String?
-  last_name String?
-  tasks    Task[]
+  last_name  String?
+  TodoLists  TodoList[]
+  accept_privacy_policy Boolean @default(true)
 }
 
-model Task {
+model TodoList {
   id          Int      @id @default(autoincrement())
   title       String   
   description String?
-  status      TaskStatus   @default(TO_DO)
+  status      TodoListStatus   @default(TODO)
   userId      Int
-  start_date  DateTime? @default(now())
-  end_date    DateTime? @default(now())
+  start_date  DateTime?
+  end_date    DateTime?
   user        User     @relation(fields: [userId], references: [id])
-  taskItems   Json
+  tasks       Json?
 }
 
 model Session {
@@ -39,9 +40,8 @@ model Session {
   @@index([userId], name: "session_userId_index")
 }
 
-enum TaskStatus {
-  TO_DO
+enum TodoListStatus {
+  TODO
   IN_PROGRESS
-  COMPLETED
-  DISCARDED
+  DONE
 }
