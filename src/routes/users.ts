@@ -1,101 +1,41 @@
-import { PrismaClient } from "@prisma/client";
-import { authMiddleware } from "..";
 import express from "express";
-import bcrypt from "bcrypt";
+import { checkJwt } from "../middleware/checkJwt";
+import { asyncHandler } from "../middleware/asyncHandler";
+import { UserController, TodoListController } from "./../controllers/index";
 
-const saltRounds = 10;
 const userRouter = express.Router();
-const prisma = new PrismaClient();
 
-userRouter.get("/:userId", async function (req, res) {
-	try {
-		const userId = parseInt(req.params?.userId, 10);
+userRouter.get("/:userId/check-auth", [checkJwt], asyncHandler(UserController.checkAuth));
 
-		const user = await prisma.user.findUnique({
-			where: { id: userId },
-		});
+userRouter.get(
+	"/:userId",
+	[checkJwt],
+	asyncHandler(UserController.getUserDetails)
+);
 
-		if (!user) {
-			res.status(404).json({ error: "User not found" });
-		} else {
-			res.status(200).json(user);
-		}
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
-});
-
-userRouter.get("/:userId/tasks", async function (req, res) {
-	try {
-		const tasks = await prisma.todoList.findMany({
-			where: { userId: parseInt(req.params.userId) },
-		});
-		res.json(tasks);
-	} catch (error) {
-		console.error("Error retrieving tasks:", error);
-		res.status(500).json({ error: "Error retrieving tasks" });
-	}
-});
+userRouter.get(
+	"/:userId/todoLists",
+	[checkJwt],
+	asyncHandler(TodoListController.getTodoLists)
+);
 
 // Update Password
-userRouter.put("/:userId", async function (req, res) {
-	try {
-		const userId = parseInt(req.params?.userId, 10);
-		const { email, oldPassword, newPassword }: any = req.body;
-		const user = await prisma.user.findUnique({
-			where: { email },
-		});
+userRouter.put(
+	"/:userId",
+	[checkJwt],
+	asyncHandler(UserController.updatePassword)
+);
 
-		if (!user || !bcrypt.compare(oldPassword, user.password)) {
-			return res.status(401).json({ error: "Incorrect Password" });
-		}
-		const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+userRouter.delete(
+	"/:userId",
+	[checkJwt],
+	asyncHandler(UserController.deleteUser)
+);
 
-		const updatedUser = await prisma.user.update({
-			where: { id: userId },
-			data: {
-				email,
-				password: hashedPassword,
-			},
-		});
-		//TODO: add logout logic here
-		res.json(updatedUser);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
-});
-
-userRouter.delete("/:userId", async function (req, res) {
-	try {
-		const userId = parseInt(req.params?.userId, 10);
-
-		await prisma.user.delete({
-			where: { id: userId },
-		});
-
-		res.json({ message: "User deleted successfully" });
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
-});
-
-userRouter.post("/:userId/logout", async function (req, res) {
-	try {
-		const token = req.headers?.authorization;
-
-		// Delete session from the database
-		await prisma.session.deleteMany({
-			// @ts-ignore
-			where: { userId: req.user.id, token },
-		});
-		res.redirect("/");
-	} catch (error) {
-		console.error(error);
-		res.status(401).json({ error: "Invalid or expired token" });
-	}
-});
+userRouter.delete(
+	"/:userId/logout",
+	[checkJwt],
+	asyncHandler(UserController.logoutUser)
+);
 
 export default userRouter;

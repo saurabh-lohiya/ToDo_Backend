@@ -7,16 +7,19 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DB_URL")
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  password   String
-  first_name String?
-  last_name  String?
-  TodoLists  TodoList[]
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  user_name     String?   @unique
+  phone_number  String?
+  birth_date    DateTime?
+  password      String
+  first_name    String?
+  last_name     String?
+  todoLists     TodoList[]
   accept_privacy_policy Boolean @default(true)
 }
 
